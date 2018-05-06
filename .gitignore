@@ -1,0 +1,5 @@
+#Ignore all
+*
+
+#unignore all with exentsions
+!*.*
