@@ -1,5 +1,3 @@
-#Ignore all
-*
+readr
+.ds_store
 
-#unignore all with exentsions
-!*.*
