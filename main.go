@@ -5,19 +5,30 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"encoding/json"
 )
 
-var port = os.Getenv("PORT")
+type Data struct {
+	Text string
+}
 
-func rootHanderler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello Heroku!")
+func apiHandler(w http.ResponseWriter, r *http.Request) {
+	d := Data{Text: "hello react!"}
+	res, err := json.Marshal(d)
+	if err != nil {
+		log.Fatal("Data could not be Marshaled")
+	}
+	fmt.Fprintf(w, string(res))
 }
 
 func main() {
+	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	http.HandleFunc("/", rootHanderler)
+	http.HandleFunc("/api/test", apiHandler)
+	http.Handle("/", http.FileServer(http.Dir("./build")))
+	log.Println("Server started on " + port)
 	log.Fatal(http.ListenAndServe(":" + port, nil))
 }
