@@ -8,13 +8,21 @@ import (
 	"encoding/json"
 )
 
-type Data struct {
-	Text string
+type Book struct {
+	Title string
+	Author string
+}
+
+type ReadingList struct {
+	Books []Book
 }
 
 func apiHandler(w http.ResponseWriter, r *http.Request) {
-	d := Data{Text: "hello react!"}
-	res, err := json.Marshal(d)
+	d := Book{Title: "Atlas Shrugged", Author: "Ayan Rand"}
+	d2 := Book{Title: "Baraay boogle", Author: "Sam Slice"}
+	books := ReadingList{Books: []Book{d,d2}}
+
+	res, err := json.Marshal(books)
 	if err != nil {
 		log.Fatal("Data could not be Marshaled")
 	}

@@ -1,5 +1,31 @@
 import React, { Component } from 'react';
 
+class ReadItem extends Component {
+    render() {
+        return (
+            <tr>
+                <td>{this.props.name}</td>
+                <td>{this.props.author}</td>
+                <td><button type="button" class="pt-button pt-icon-add">Add to List</button></td>
+            </tr>
+        );
+    }
+}
+
+class ReadList extends Component {
+    render() {
+        const listItems = this.props.books.map((book) =>
+            <ReadItem name={book.name} author={book.Author} />
+        );
+
+        return (
+            <table class='pt-html-table pt-html-table-striped'>
+                {listItems}
+            </table>
+        );
+    }
+}
+
 class App extends Component {
     constructor(props) {
         super(props);
@@ -17,7 +43,7 @@ class App extends Component {
                 (result) => {
                     this.setState({
                         isLoaded: true,
-                        data: result.Text
+                        data: result.Books
                     });
                 },
                 (error) => {
@@ -37,9 +63,9 @@ class App extends Component {
             return <div>Loading ... </div>;
         } else {
             return (
-                <h1>
-                    {data}
-                </h1>
+                <div>
+                    <ReadList books={this.state.data}/>
+                </div>
             );
         }
     }
