@@ -1,11 +1,31 @@
 import React, { Component } from 'react';
 
-function Navbar() {
+class SearchBar extends Component {
+    constructor(props) {
+        super(props);
+        this.handleFilterTextChange = this.handleFilterTextChange.bind(this);
+    }
+
+    handleFilterTextChange(e) {
+        this.props.onFilterTextChange(e.target.value);
+    }
+
+    render() {
+        return (
+            <input class="pt-input" placeholder="Search My List..." type="text"
+                value={this.props.filterText}
+                onChange={this.handleFilterTextChange}
+            />
+        );
+    }
+}
+
+function Navbar(props) {
     return (
         <nav class="pt-navbar">
             <div class="pt-navbar-group pt-align-left">
                 <div class="pt-navbar-heading">Readr</div>
-                <input class="pt-input" placeholder="Search Books..." type="text" />
+                <SearchBar filterText={props.filterText} onFilterTextChange={props.onFilterTextChange}/>
             </div>
             <div class="pt-navbar-group pt-align-right">
                 <button class="pt-button pt-minimal pt-icon-home">Home</button>
@@ -32,55 +52,75 @@ class ItemForm extends Component {
     }
 
     handleChange(event) {
+        const target = event.target;
+        const value = target.value;
+        const name = target.name;
+
         this.setState({
-            Title: event.target.Title,
-            Author: event.target.Author
+            [name]: value
         });
     }
 
-    handleSubmit(event) {
-        alert("New Book added!")
-        event.preventDefault();
+    handleSubmit() {
+        this.props.onSubmit({
+            Title: this.state.Title,
+            Author: this.state.Author
+        });
+
+        this.setState({
+            Title: '',
+            Author: ''
+        })
     }
 
-    render() {
-        return (
-            <form onSubmit={this.handleSubmit}>
-                <label class="pt-label">
-                    Title:
-                    <input class="pt-input" type="text" value={this.state.Title} onChange={this.handleChange} />
-                </label>
-                <label class="pt-label">
-                    Author:
-                    <input class="pt-input" type="text" value={this.state.Author} onChange={this.handleChange} />
-                </label>
-                <input class="pt-button pt-intent-success" type="submit" value="Submit" />
-            </form>
-        );
-    }
-}
-
-class ReadItem extends Component {
     render() {
         return (
             <tr>
-                <td>{this.props.Title}</td>
-                <td>{this.props.author}</td>
-                <td><button type="button" class="pt-button pt-icon-add">Done</button></td>
+                <td>
+                    <input class="pt-input" name="Title" type="text" value={this.state.Title} onChange={this.handleChange} />
+                </td>
+                <td>
+                    <input class="pt-input" name="Author" type="text" value={this.state.Author} onChange={this.handleChange} />
+                </td>
+                <td><button class="pt-button pt-intent-success pt-icon-add" type="button" onClick={this.handleSubmit}/></td>
             </tr>
         );
     }
 }
 
-class ReadList extends Component {
+class Book extends Component {
     render() {
-        const listItems = this.props.books.map((book) =>
-            <ReadItem Title={book.Title} author={book.Author} />
+        return (
+            <tr>
+                <td>{this.props.Title}</td>
+                <td>{this.props.author}</td>
+                <td><button type="button" class="pt-button pt-icon-tick" onClick={this.props.onClick}/></td>
+            </tr>
         );
+    }
+}
 
+class ReadingList extends Component {
+    render() {
+        const filterText = this.props.filterText.toLowerCase();
+        const listItems = [];
+
+        this.props.books.forEach((book,i) => {
+            if ((book.Title + book.Author).toLowerCase().indexOf(filterText) === -1) {
+                return;
+            }
+            listItems.push(<Book Title={book.Title} author={book.Author} onClick={() => this.props.readingListRemove(i)}/>);
+        });
+        listItems.push()
         return (
             <table class='pt-html-table pt-html-table-striped'>
+                <thead>
+                    <tr>
+                        <th>Title</th><th>Author</th>
+                    </tr>
+                </thead>
                 {listItems}
+                <ItemForm onSubmit={this.props.readingListAdd} />
             </table>
         );
     }
@@ -92,8 +132,33 @@ class App extends Component {
         this.state = {
             error: null,
             isLoaded: false,
-            data: null
+            readingList: null,
+            filterText: ''
         };
+
+        this.handleFilterTextChange = this.handleFilterTextChange.bind(this);
+    }
+
+    handleFilterTextChange(filterText) {
+        this.setState({
+            filterText: filterText
+        });
+    }
+
+    readingListAdd(book) {
+        let readingList = this.state.readingList.slice();
+        readingList.push(book);
+        this.setState({
+            readingList: readingList
+        });
+    }
+
+    readingListRemove(list_index) {
+        let readingList = this.state.readingList.slice()
+        readingList.splice(list_index,1);
+        this.setState({
+            readingList: readingList
+        });
     }
 
     componentDidMount() {
@@ -103,7 +168,7 @@ class App extends Component {
                 (result) => {
                     this.setState({
                         isLoaded: true,
-                        data: result.Books
+                        readingList: result.Books
                     });
                 },
                 (error) => {
@@ -116,7 +181,7 @@ class App extends Component {
     }
 
     render() {
-        const { error, isLoaded, data } = this.state;
+        const { error, isLoaded, readingList } = this.state;
         if (error) {
             return <div>Error: {error.message}</div>;
         } else if (!isLoaded) {
@@ -124,12 +189,11 @@ class App extends Component {
         } else {
             return (
                 <div class='body'>
-                    <Navbar />
+                    <Navbar filterText={this.state.filterText} onFilterTextChange={this.handleFilterTextChange}/>
                     <div class="pt-card">
-                        <ReadList books={this.state.data}/>
-                    </div>
-                    <div class="pt-card">
-                        <ItemForm />
+                        <ReadingList filterText={this.state.filterText} books={this.state.readingList}
+                        readingListRemove={this.readingListRemove.bind(this)}
+                        readingListAdd={this.readingListAdd.bind(this)}/>
                     </div>
                 </div>
             );
