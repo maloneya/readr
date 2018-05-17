@@ -151,6 +151,8 @@ class App extends Component {
         this.setState({
             readingList: readingList
         });
+
+        postData('/api/addBook',book);
     }
 
     readingListRemove(list_index) {
@@ -159,10 +161,15 @@ class App extends Component {
         this.setState({
             readingList: readingList
         });
+        let data = {
+            List_id: list_index
+        }
+
+        postData('/api/remBook',data);
     }
 
     componentDidMount() {
-        fetch("/api/test")
+        fetch("/api/getList")
             .then(res => res.json())
             .then(
                 (result) => {
@@ -199,6 +206,16 @@ class App extends Component {
             );
         }
     }
+}
+
+function postData(url, data) {
+    return fetch(url, {
+        body: JSON.stringify(data),
+        headers: {
+            'content-type': 'application/json'
+        },
+        method: 'POST',
+    })
 }
 
 export default App;
