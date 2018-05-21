@@ -7,7 +7,11 @@ import (
 	"log"
 	"net/http"
 	"encoding/json"
+	"database/sql"
+	 _ "github.com/lib/pq"
 )
+
+var db *sql.DB
 
 type Book struct {
 	Title string
@@ -24,9 +28,24 @@ type ReadingList struct {
 }
 
 func getList(w http.ResponseWriter, r *http.Request) {
-	d := Book{Title: "Atlas Shrugged", Author: "Ayan Rand"}
-	d2 := Book{Title: "Baraay boogle", Author: "Sam Slice"}
-	books := ReadingList{Books: []Book{d,d2}}
+	var (
+		title, author string
+		books []Book
+	)
+
+	rows, err := db.Query("SELECT * FROM books")
+	if err != nil {
+		log.Fatalf("getList querry fail: %q", err)
+	}
+	defer rows.Close()
+	//optimize slice usage here
+	for rows.Next() {
+		err := rows.Scan(&title,&author)
+		if err != nil {
+			log.Fatalf("Row scan error: %q", err)
+		}
+		books = append(books, Book{Title: title, Author: author})
+	}
 
 	res, err := json.Marshal(books)
 	if err != nil {
@@ -46,6 +65,8 @@ func addBook(w http.ResponseWriter, r *http.Request) {
 		log.Println("json unmarshal fail add book")
 	}
 	log.Println(book)
+	insertStatement := "INSERT INTO books VALUES ($1, $2)"
+	db.Exec(insertStatement, book.Title, book.Author)
 }
 
 func remBook(w http.ResponseWriter, r *http.Request) {
@@ -67,6 +88,17 @@ func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
+	}
+	db, err := sql.Open("postgres", os.Getenv("DATABSE_URL"))
+	if err != nil {
+		log.Fatalf("Error opening database: %q", err)
+	}
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS books (
+			Title varchar(255),
+			Author varchar(255)
+	)`)
+	if err != nil {
+		log.Fatalf("Error creating db: %q", err)
 	}
 
 	http.HandleFunc("/api/getList", getList)
