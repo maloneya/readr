@@ -30,7 +30,7 @@ type ReadingList struct {
 func getList(w http.ResponseWriter, r *http.Request) {
 	var (
 		title, author string
-		books []Book
+		list ReadingList
 	)
 
 	rows, err := db.Query("SELECT * FROM books")
@@ -44,10 +44,10 @@ func getList(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Fatalf("Row scan error: %q", err)
 		}
-		books = append(books, Book{Title: title, Author: author})
+		list.Books = append(list.Books, Book{Title: title, Author: author})
 	}
 
-	res, err := json.Marshal(books)
+	res, err := json.Marshal(list)
 	if err != nil {
 		log.Fatal("Data could not be Marshaled")
 	}
@@ -84,22 +84,32 @@ func remBook(w http.ResponseWriter, r *http.Request) {
 	log.Println(data)
 }
 
+func dbSetup() {
+	//FIXME enable ssl
+	db_url := os.Getenv("DATABASE_URL") + "?sslmode=disable";
+	log.Println(db_url)
+
+	var err error
+	db, err = sql.Open("postgres", db_url)
+	if err != nil {
+		log.Fatalf("Error opening database: %q", err)
+	}
+
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS books (
+			Title varchar(255),
+			Author varchar(255))`)
+	if err != nil {
+		log.Fatalf("Error creating db: %q", err)
+	}
+}
+
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-	db, err := sql.Open("postgres", os.Getenv("DATABSE_URL"))
-	if err != nil {
-		log.Fatalf("Error opening database: %q", err)
-	}
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS books (
-			Title varchar(255),
-			Author varchar(255)
-	)`)
-	if err != nil {
-		log.Fatalf("Error creating db: %q", err)
-	}
+
+	dbSetup()
 
 	http.HandleFunc("/api/getList", getList)
 	http.HandleFunc("/api/addBook", addBook)

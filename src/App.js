@@ -111,7 +111,7 @@ class ReadingList extends Component {
             }
             listItems.push(<Book Title={book.Title} author={book.Author} onClick={() => this.props.readingListRemove(i)}/>);
         });
-        listItems.push()
+
         return (
             <table class='pt-html-table pt-html-table-striped'>
                 <thead>
@@ -175,7 +175,7 @@ class App extends Component {
                 (result) => {
                     this.setState({
                         isLoaded: true,
-                        readingList: result.Books
+                        readingList: (result.Books !== null) ? result.Books:[]
                     });
                 },
                 (error) => {
