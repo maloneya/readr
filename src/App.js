@@ -1,4 +1,17 @@
 import React, { Component } from 'react';
+import './index.css';
+
+
+function Login(props) {
+    return (
+        <div class="Body">
+            <div class="pt-card pt-elevation-3">
+                <img src="/assets/logo.png" class="Center"/>
+                <div class="Center fb-login-button" data-width="400" data-size="large" data-button-type="continue_with" data-show-faces="false" data-auto-logout-link="false" data-use-continue-as="true"></div>
+            </div>
+        </div>
+    );
+}
 
 class SearchBar extends Component {
     constructor(props) {
@@ -130,6 +143,7 @@ class App extends Component {
     constructor(props) {
         super(props);
         this.state = {
+            loggedIn: false,
             error: null,
             isLoaded: false,
             readingList: null,
@@ -168,34 +182,66 @@ class App extends Component {
         postData('/api/remBook',data);
     }
 
-    componentDidMount() {
-        fetch("/api/getList")
-            .then(res => res.json())
-            .then(
-                (result) => {
-                    this.setState({
-                        isLoaded: true,
-                        readingList: (result.Books !== null) ? result.Books:[]
-                    });
-                },
-                (error) => {
-                    this.setState({
-                        isLoaded: true,
-                        error
-                    });
-                }
-            )
+    statusChangeCallback(login_response) {
+        console.log(login_response)
+        if (login_response.status === "Connected") {
+            fetch("/api/getList")
+                .then(res => res.json())
+                .then(
+                    (result) => {
+                        this.setState({
+                            isLoaded: true,
+                            readingList: (result.Books !== null) ? result.Books:[]
+                        });
+                    },
+                    (error) => {
+                        this.setState({
+                            isLoaded: true,
+                            error
+                        });
+                    }
+                )
+        }
     }
 
+    componentDidMount() {
+        const callback = this.statusChangeCallback;
+        window.fbAsyncInit = function() {
+            window.FB.init({
+                appId      : '225918651336380',
+                cookie     : true,
+                xfbml      : true,
+                version    : 'v3.0'
+                });
+
+
+            window.FB.getLoginStatus(function(response) {
+                callback(response);
+            });
+        };
+
+        (function(d, s, id){
+            var js, fjs = d.getElementsByTagName(s)[0];
+            if (d.getElementById(id)) {return;}
+            js = d.createElement(s); js.id = id;
+            js.src = "https://connect.facebook.net/en_US/sdk.js";
+            fjs.parentNode.insertBefore(js, fjs);
+        }(document, 'script', 'facebook-jssdk'));
+    }
+
+    //this could use a refactor.
     render() {
-        const { error, isLoaded, readingList } = this.state;
-        if (error) {
+        const { loggedIn, error, isLoaded, readingList } = this.state;
+        console.log("logged in: " + loggedIn)
+        if (!loggedIn) {
+            return <Login />
+        } else if (error) {
             return <div>Error: {error.message}</div>;
         } else if (!isLoaded) {
             return <div>Loading ... </div>;
         } else {
             return (
-                <div class='body'>
+                <div class='Body'>
                     <Navbar filterText={this.state.filterText} onFilterTextChange={this.handleFilterTextChange}/>
                     <div class="pt-card">
                         <ReadingList filterText={this.state.filterText} books={this.state.readingList}
