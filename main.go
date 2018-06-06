@@ -22,16 +22,8 @@ type Book struct {
 	Title, Author, User_id string
 }
 
-type User struct {
-	User_id string
-}
-
 type Article struct {
 	Title, Publication, URL, User_id string
-}
-
-type UrlPost struct {
-	URL, User_id string
 }
 
 type ReadingList struct {
@@ -40,7 +32,6 @@ type ReadingList struct {
 }
 
 func getLinkData(url string) (title, publication string) {
-	log.Printf(url)
 	resp,err := http.Get(url)
 	if err != nil {
 		log.Fatalf("get link failed %q", err)
@@ -48,15 +39,27 @@ func getLinkData(url string) (title, publication string) {
 	var body []byte
 	body,err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalf("asdf")
+		log.Fatalf("Get link data: %q",err)
 	}
 
 	raw_html := string(body)
 	title_html := raw_html[strings.Index(raw_html,"title"):]
-	title = title_html[strings.Index(title_html,">") + 1:strings.Index(title_html,"</")]
+	title_pub := title_html[strings.Index(title_html,">") + 1:strings.Index(title_html,"</")]
+	data := strings.Split(title_pub,"-")
+	title = data[0]
 
-	publication = resp.Request.URL.Host
-	publication = publication[strings.Index(publication,".")+1:strings.LastIndex(publication,".")]
+	if (len(data) == 1) {
+		publication = resp.Request.URL.Host
+		start := strings.Index(publication,".")
+		end := strings.LastIndex(publication,".")
+		if start == end {
+			publication = publication[:start]
+		} else {
+			publication = publication[start+1:end]
+		}
+	} else {
+		publication = data[1]
+	}
 
 	return
 }
@@ -135,7 +138,7 @@ func addArticle(w http.ResponseWriter, r *http.Request) {
 	title, publication := getLinkData(url.URL)
 	article := Article{title,publication,url.URL,url.User_id}
 	db.Exec(ArticleInsert, article.Title, article.Publication, article.URL, article.User_id)
-	//send article meta data back to client 
+	//send article meta data back to client
 	res, err := json.Marshal(article)
 	if err != nil {
 		log.Fatal("Data could not be Marshaled")
@@ -147,7 +150,8 @@ func addArticle(w http.ResponseWriter, r *http.Request) {
 func remArticle(w http.ResponseWriter, r *http.Request) {
 	article := Request{}
 	parseRequest(r,&article)
-
+	log.Printf(article.URL)
+	log.Printf(article.User_id)
 	res, err := db.Exec(ArticleDelete, article.URL, article.User_id)
 	if err != nil {
 		log.Println(err)

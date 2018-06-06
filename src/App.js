@@ -160,7 +160,7 @@ class Article extends Component {
                 <td>{this.props.Title}</td>
                 <td>{this.props.publication}</td>
                 <td>
-                    <div class="pt-button-group Padded">
+                    <div class="pt-button-group">
                         <a name="type" class="pt-button pt-icon-tick" onClick={this.props.onClick} role="button" />
                         <a name="type" class="pt-button pt-icon-document-open" onClick={() => window.open(this.props.url)} role="button" />
                     </div>
@@ -276,8 +276,8 @@ class App extends Component {
             Articles: Articles
         })
 
-        remed_article[0].User_id = this.state.user_id
-        //postData('/api/remArticle', remed_article[0])
+        remed_article[0].User_id = this.state.userID
+        postData('/api/remArticle', remed_article[0])
     }
 
     statusChangeCallback(login_response) {

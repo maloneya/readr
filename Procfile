@@ -1,1 +1,1 @@
-web: readr
+web: npm run build ;readr
