@@ -4,6 +4,7 @@ import (
 	"os"
 	"io/ioutil"
 	"fmt"
+	"strings"
 	"log"
 	"net/http"
 	"encoding/json"
@@ -13,10 +14,12 @@ import (
 
 var db *sql.DB
 
+type Request struct {
+	Title, Author, Publication, URL, User_id string
+}
+
 type Book struct {
-	Title string
-	Author string
-	User_id string
+	Title, Author, User_id string
 }
 
 type User struct {
@@ -24,10 +27,11 @@ type User struct {
 }
 
 type Article struct {
-	Title string
-	Publication string
-	URL string
-	User_id string
+	Title, Publication, URL, User_id string
+}
+
+type UrlPost struct {
+	URL, User_id string
 }
 
 type ReadingList struct {
@@ -35,10 +39,36 @@ type ReadingList struct {
 	Articles []Article
 }
 
-func getList(w http.ResponseWriter, r *http.Request, data interface{}) {
-	var list ReadingList
-	getBooks(list, user.User_id)
-	getArticles(list, user.User_id)
+func getLinkData(url string) (title, publication string) {
+	log.Printf(url)
+	resp,err := http.Get(url)
+	if err != nil {
+		log.Fatalf("get link failed %q", err)
+	}
+	var body []byte
+	body,err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalf("asdf")
+	}
+
+	raw_html := string(body)
+	title_html := raw_html[strings.Index(raw_html,"title"):]
+	title = title_html[strings.Index(title_html,">") + 1:strings.Index(title_html,"</")]
+
+	publication = resp.Request.URL.Host
+	publication = publication[strings.Index(publication,".")+1:strings.LastIndex(publication,".")]
+
+	return
+}
+
+func getList(w http.ResponseWriter, r *http.Request) {
+	var list ReadingList = ReadingList{}
+	user := Request{}
+	parseRequest(r,&user)
+
+	log.Printf(user.User_id)
+	getBooks(&list, user.User_id)
+	getArticles(&list, user.User_id)
 
 	res, err := json.Marshal(list)
 	if err != nil {
@@ -67,7 +97,7 @@ func getBooks(list *ReadingList, user_id string) {
 func getArticles(list *ReadingList, user_id string) {
 	rows, err := db.Query(ArticleGet, user_id)
 	if err != nil {
-		log.Fatalf("getList querry fail: %q", err)
+		log.Fatalf("getArticles querry fail: %q", err)
 	}
 	defer rows.Close()
 
@@ -81,13 +111,17 @@ func getArticles(list *ReadingList, user_id string) {
 	}
 }
 
-func addBook(w http.ResponseWriter, r *http.Request, data interface{}) {
-	book := data.(Book)
+func addBook(w http.ResponseWriter, r *http.Request) {
+	book := Request{}
+	parseRequest(r,&book)
+
 	db.Exec(BookInsert, book.Title, book.Author, book.User_id)
 }
 
-func remBook(w http.ResponseWriter, r *http.Request, data interface{}) {
-	book := data.(Book)
+func remBook(w http.ResponseWriter, r *http.Request) {
+	book := Request{}
+	parseRequest(r,&book)
+
 	res, err := db.Exec(BookDelete,book.Title, book.Author, book.User_id)
 	if err != nil {
 		log.Println(err)
@@ -95,14 +129,26 @@ func remBook(w http.ResponseWriter, r *http.Request, data interface{}) {
 	log.Println(res.RowsAffected())
 }
 
-func addArticle(w http.ResponseWriter, r *http.Request, data interface{}) {
-	article := data.(Article)
+func addArticle(w http.ResponseWriter, r *http.Request) {
+	url := Request{}
+	parseRequest(r,&url)
+	title, publication := getLinkData(url.URL)
+	article := Article{title,publication,url.URL,url.User_id}
 	db.Exec(ArticleInsert, article.Title, article.Publication, article.URL, article.User_id)
+	//send article meta data back to client 
+	res, err := json.Marshal(article)
+	if err != nil {
+		log.Fatal("Data could not be Marshaled")
+	}
+	fmt.Fprintf(w, string(res))
+
 }
 
-func remArticle(w http.ResponseWriter, r *http.Request, data interface{}) {
-	article := data.(Article)
-	res err := db.Exec(ArticleDelete, article.URL, article.User_id)
+func remArticle(w http.ResponseWriter, r *http.Request) {
+	article := Request{}
+	parseRequest(r,&article)
+
+	res, err := db.Exec(ArticleDelete, article.URL, article.User_id)
 	if err != nil {
 		log.Println(err)
 	}
@@ -131,18 +177,15 @@ func dbSetup() {
 	}
 }
 
-func makePostHandler(fn func(http.ResponseWriter, *http.Request, interface{}), data interface{}) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			log.Println("rem book parse failed")
-		}
-		err = json.Unmarshal(body, &data)
-		if err != nil {
-			log.Println("json unmarshal fail rem book")
-		}
-		log.Println(data)
-		fn(w,r,data)
+func parseRequest(r *http.Request, data *Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Println("parse reqeust failed")
+	}
+
+	err = json.Unmarshal(body, data)
+	if err != nil {
+		log.Println("json unmarshal fail parse request: %q", err)
 	}
 }
 
@@ -154,11 +197,12 @@ func main() {
 
 	dbSetup()
 
-	http.HandleFunc("/api/getList", makePostHandler(getList,User{}))
-	http.HandleFunc("/api/addBook", makePostHandler(addBook,Book{}))
-	http.HandleFunc("/api/remBook", makePostHandler(remBook,Book{}))
-	http.HnadleFunc("/api/remArticle", makePostHandler(remArticle,Article{}))
-	http.HnadleFunc("/api/remArticle", makePostHandler(remArticle,Article{}))
+	http.HandleFunc("/api/getList", getList)
+	http.HandleFunc("/api/addBook", addBook)
+	http.HandleFunc("/api/remBook", remBook)
+	http.HandleFunc("/api/remArticle", remArticle)
+	http.HandleFunc("/api/addArticle", addArticle)
+
 
 	http.Handle("/", http.FileServer(http.Dir("./build")))
 	log.Println("Server started on " + port)

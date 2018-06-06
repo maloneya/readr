@@ -13,7 +13,7 @@ const ArticleInsert = "INSERT INTO articles VALUES ($1, $2, $3, $4);"
 const ArticleDelete = "DELETE FROM articles WHERE URL=$1 AND userID=$2"
 const ArticleGet = "SELECT title, publication, URL FROM articles WHERE userID=$1"
 
-const ArticleTableCreate = `CREATE TABLE IF NOT EXISTS article (
+const ArticleTableCreate = `CREATE TABLE IF NOT EXISTS articles (
         Title varchar(255),
         Publication varchar(255),
         URL varchar(255),

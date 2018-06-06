@@ -240,19 +240,22 @@ class App extends Component {
 
     articleAdd(url) {
         let Articles = this.state.Articles.slice();
-        //TODO go get data from url
         let article = {
-            Title: "Trump Does dumb shit",
-            Publication: "New York Times",
-            URL: url
+            URL: url,
+            User_id: this.state.userID
         }
-        Articles.push(article)
-        this.setState({
-            Articles: Articles
-        })
 
-        article.User_id = this.state.userID
-        //postData('/api/addArticle',article)
+        postData('/api/addArticle',article)
+            .then(res => res.json())
+            .then((result) => {
+                article.Title = result.Title;
+                article.Publication = result.Publication;
+
+                Articles.push(article);
+                this.setState({
+                    Articles: Articles
+                });
+            });
     }
 
     bookListRemove(list_index) {
