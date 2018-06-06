@@ -7,7 +7,7 @@ function Login(props) {
         <div class="Body">
             <div class="pt-card pt-elevation-3">
                 <img src="/assets/logo.png" class="Center"/>
-                <div class="Center fb-login-button" data-width="400" data-size="large" data-button-type="continue_with" data-show-faces="false" data-auto-logout-link="false" data-use-continue-as="true"></div>
+                <div class="Center fb-login-button" data-on-login={props.onLogin} data-width="400" data-size="large" data-button-type="continue_with" data-show-faces="false" data-auto-logout-link="false" data-use-continue-as="true"></div>
             </div>
         </div>
     );
@@ -306,6 +306,13 @@ class App extends Component {
         }
     }
 
+    checkLoginState() {
+        const callback = this.statusChangeCallback
+        window.FB.getLoginStatus(function(response) {
+            callback(response);
+        });
+    }
+
     componentDidMount() {
         const callback = this.statusChangeCallback;
         window.fbAsyncInit = function() {
@@ -342,7 +349,7 @@ class App extends Component {
             itemForm = <ArticleForm onSubmit={this.articleAdd.bind(this)} />
 
         if (userID == '') {
-            return <Login />
+            return <Login onLogin={this.checkLoginState.bind(this)} />
         } else if (error) {
             return <div>Error: {error.message}</div>;
         } else if (!isLoaded) {
