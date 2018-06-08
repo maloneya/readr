@@ -1,7 +1,6 @@
 import React, { Component } from 'react';
 import './index.css';
 
-
 function Login(props) {
     return (
         <div class="Body">
@@ -185,21 +184,17 @@ class ReadingList extends Component {
     }
 }
 
-class App extends Component {
+class Readr extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            userID: '',
-            error: null,
-            isLoaded: false,
-            Books: null,
-            Articles: null,
+            Books: [],
+            Articles: [],
             filterText: '',
             newData: 'book'
-        };
+        }
 
         this.handleFilterTextChange = this.handleFilterTextChange.bind(this);
-        this.statusChangeCallback = this.statusChangeCallback.bind(this);
     }
 
     handleFilterTextChange(filterText) {
@@ -215,7 +210,7 @@ class App extends Component {
             Books: Books
         });
 
-        book.User_id = this.state.userID
+        book.User_id = this.props.userID
         postData('/api/addBook',book);
     }
 
@@ -223,7 +218,7 @@ class App extends Component {
         let Articles = this.state.Articles.slice();
         let article = {
             URL: url,
-            User_id: this.state.userID
+            User_id: this.props.userID
         }
 
         postData('/api/addArticle',article)
@@ -246,7 +241,7 @@ class App extends Component {
             Books: Books
         });
 
-        remed_book[0].User_id = this.state.userID
+        remed_book[0].User_id = this.props.userID
         postData('/api/remBook',remed_book[0]);
     }
 
@@ -257,38 +252,72 @@ class App extends Component {
             Articles: Articles
         })
 
-        remed_article[0].User_id = this.state.userID
+        remed_article[0].User_id = this.props.userID
         postData('/api/remArticle', remed_article[0])
+    }
+
+    componentDidMount() {
+        postData("/api/getList",{User_id: this.props.userID})
+            .then(res => res.json())
+            .then((result) => {
+                    this.setState({
+                        Books: (result.Books !== null) ? result.Books:[],
+                        Articles: (result.Articles !== null) ? result.Articles:[]
+                    });
+                });
+    }
+
+    render() {
+        const { Books, Articles, newData } = this.state;
+
+        var itemForm;
+        if (newData === "book")
+            itemForm = <Form onSubmit={this.bookListAdd.bind(this)} type={this.state.newData} />
+        else
+            itemForm = <Form onSubmit={this.articleAdd.bind(this)} type={this.state.newData} />
+
+        return (
+            <div class='Body'>
+                <Navbar filterText={this.state.filterText} onFilterTextChange={this.handleFilterTextChange}/>
+                <div class="pt-card">
+                    <ReadingList filterText={this.state.filterText} books={this.state.Books}
+                    articles={this.state.Articles}
+                    bookListRemove={this.bookListRemove.bind(this)}
+                    articleRemove={this.articleRemove.bind(this)}/>
+                </div>
+                <div class="pt-card">
+                    <div class="pt-button-group">
+                        <a name="type" class="pt-button pt-icon-document" role="button" onClick={() => this.setState({newData:'article'})} />
+                        <a name="type" class="pt-button pt-icon-git-repo" role="button" onClick={() => this.setState({newData:'book'})}/>
+                    </div>
+                    {itemForm}
+                </div>
+            </div>
+        );
+    }
+}
+
+class App extends Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            userID: '',
+        };
+
+        this.statusChangeCallback = this.statusChangeCallback.bind(this);
     }
 
     statusChangeCallback(login_response) {
         console.log(login_response)
         const user_id = login_response.authResponse.userID
         if (login_response.status === "connected") {
-            postData("/api/getList",{User_id: user_id})
-                .then(res => res.json())
-                .then(
-                    (result) => {
-                        this.setState({
-                            userID: user_id,
-                            isLoaded: true,
-                            Books: (result.Books !== null) ? result.Books:[],
-                            Articles: (result.Articles !== null) ? result.Articles:[]
-                        });
-                    },
-                    (error) => {
-                        this.setState({
-                            userID: user_id,
-                            isLoaded: true,
-                            error
-                        });
-                    }
-                )
+            this.setState({
+                userID: user_id,
+            });
         }
     }
 
     checkLoginState() {
-        console.log("HITME")
         const callback = this.statusChangeCallback
         window.FB.getLoginStatus(function(response) {
             callback(response);
@@ -319,41 +348,13 @@ class App extends Component {
         }(document, 'script', 'facebook-jssdk'));
     }
 
-    //this could use a refactor.
     render() {
-        const { userID, error, isLoaded, Books, Articles, newData } = this.state;
-
-        var itemForm;
-        if (newData === "book")
-            itemForm = <Form onSubmit={this.bookListAdd.bind(this)} type={this.state.newData} />
-        else
-            itemForm = <Form onSubmit={this.articleAdd.bind(this)} type={this.state.newData} />
+        const userID = this.state.userID;
 
         if (userID == '') {
             return <Login onLogin={this.checkLoginState.bind(this)} />
-        } else if (error) {
-            return <div>Error: {error.message}</div>;
-        } else if (!isLoaded) {
-            return <div>Loading ... </div>;
         } else {
-            return (
-                <div class='Body'>
-                    <Navbar filterText={this.state.filterText} onFilterTextChange={this.handleFilterTextChange}/>
-                    <div class="pt-card">
-                        <ReadingList filterText={this.state.filterText} books={this.state.Books}
-                        articles={this.state.Articles}
-                        bookListRemove={this.bookListRemove.bind(this)}
-                        articleRemove={this.articleRemove.bind(this)}/>
-                    </div>
-                    <div class="pt-card">
-                        <div class="pt-button-group">
-                            <a name="type" class="pt-button pt-icon-document" role="button" onClick={() => this.setState({newData:'article'})} />
-                            <a name="type" class="pt-button pt-icon-git-repo" role="button" onClick={() => this.setState({newData:'book'})}/>
-                        </div>
-                        {itemForm}
-                    </div>
-                </div>
-            );
+            return <Readr userID={userID} />
         }
     }
 }
