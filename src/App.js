@@ -7,7 +7,7 @@ function Login(props) {
         <div class="Body">
             <div class="pt-card pt-elevation-3">
                 <img src="/assets/logo.png" class="Center"/>
-                <div class="Center fb-login-button" data-on-login={props.onLogin} data-width="400" data-size="large" data-button-type="continue_with" data-show-faces="false" data-auto-logout-link="false" data-use-continue-as="true"></div>
+                <div class="Center fb-login-button" data-onlogin={props.onLogin} data-width="400" data-size="large" data-button-type="continue_with" data-show-faces="false" data-auto-logout-link="false" data-use-continue-as="true"></div>
             </div>
         </div>
     );
@@ -52,12 +52,13 @@ function Navbar(props) {
     );
 }
 
-class BookForm extends Component {
+class Form extends Component {
     constructor(props) {
         super(props);
         this.state = {
             Title: "",
-            Author: ""
+            Author: "",
+            URL: ""
         };
 
         this.handleChange = this.handleChange.bind(this);
@@ -75,66 +76,46 @@ class BookForm extends Component {
     }
 
     handleSubmit() {
-        this.props.onSubmit({
-            Title: this.state.Title,
-            Author: this.state.Author
-        });
+        if (this.props.type === 'book') {
+            this.props.onSubmit({
+                Title: this.state.Title,
+                Author: this.state.Author
+            });
+        } else if (this.props.type === 'article') {
+            this.props.onSubmit(this.state.URL);
+        }
 
         this.setState({
             Title: '',
-            Author: ''
+            Author: '',
+            URL: ''
         })
     }
 
     render() {
-        return (
-            <tr>
+        let inputs;
+        if (this.props.type === 'book') {
+            inputs = (
+            <div>
                 <td>
                     <input placeholder="Title" class="pt-input" name="Title" type="text" value={this.state.Title} onChange={this.handleChange} />
                 </td>
                 <td>
                     <input placeholder="Author" class="pt-input" name="Author" type="text" value={this.state.Author} onChange={this.handleChange} />
                 </td>
-                <td><button class="pt-button pt-intent-success pt-icon-add" type="button" onClick={this.handleSubmit}/></td>
-            </tr>
-        );
-    }
-}
-
-class ArticleForm extends Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            URL: "",
-        };
-
-        this.handleChange = this.handleChange.bind(this);
-        this.handleSubmit = this.handleSubmit.bind(this);
-    }
-
-    handleChange(event) {
-        const target = event.target;
-        const value = target.value;
-        const name = target.name;
-
-        this.setState({
-            [name]: value
-        });
-    }
-
-    handleSubmit() {
-        this.props.onSubmit(this.state.URL);
-        this.setState({
-            URL: '',
-        })
-    }
-
-    render() {
-        return (
-            <tr>
+            </div>
+            );
+        } else if (this.props.type === 'article') {
+            inputs = (
                 <td>
                     <input placeholder="URL" class="pt-input" name="URL" type="text" value={this.state.URL} onChange={this.handleChange} />
                 </td>
+            )
+        }
+
+        return (
+            <tr>
+                {inputs}
                 <td><button class="pt-button pt-intent-success pt-icon-add" type="button" onClick={this.handleSubmit}/></td>
             </tr>
         );
@@ -307,6 +288,7 @@ class App extends Component {
     }
 
     checkLoginState() {
+        console.log("HITME")
         const callback = this.statusChangeCallback
         window.FB.getLoginStatus(function(response) {
             callback(response);
@@ -322,7 +304,6 @@ class App extends Component {
                 xfbml      : true,
                 version    : 'v3.0'
                 });
-
 
             window.FB.getLoginStatus(function(response) {
                 callback(response);
@@ -344,9 +325,9 @@ class App extends Component {
 
         var itemForm;
         if (newData === "book")
-            itemForm = <BookForm onSubmit={this.bookListAdd.bind(this)} />
+            itemForm = <Form onSubmit={this.bookListAdd.bind(this)} type={this.state.newData} />
         else
-            itemForm = <ArticleForm onSubmit={this.articleAdd.bind(this)} />
+            itemForm = <Form onSubmit={this.articleAdd.bind(this)} type={this.state.newData} />
 
         if (userID == '') {
             return <Login onLogin={this.checkLoginState.bind(this)} />
