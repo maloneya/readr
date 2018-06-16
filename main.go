@@ -44,11 +44,12 @@ func getLinkData(url string) (title, publication string) {
 
 	raw_html := string(body)
 	title_html := raw_html[strings.Index(raw_html,"title"):]
-	title_pub := title_html[strings.Index(title_html,">") + 1:strings.Index(title_html,"</")]
-	data := strings.Split(title_pub,"-")
+	title_and_pub := title_html[strings.Index(title_html,">") + 1:strings.Index(title_html,"</")]
+	data := strings.Split(title_and_pub,"-")
 	title = data[0]
 
-	if (len(data) == 1) {
+	if (len(data) != 2) {
+		title = title_and_pub
 		publication = resp.Request.URL.Host
 		start := strings.Index(publication,".")
 		end := strings.LastIndex(publication,".")

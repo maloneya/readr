@@ -1,4 +1,6 @@
 import React, { Component } from 'react';
+import { Button, Dialog, MenuItem } from "@blueprintjs/core";
+import { Suggest } from "@blueprintjs/select";
 import './index.css';
 
 function Login(props) {
@@ -6,7 +8,7 @@ function Login(props) {
         <div class="Body">
             <div class="pt-card pt-elevation-3">
                 <img src="/assets/logo.png" class="Center"/>
-                <div class="Center fb-login-button" data-onlogin={props.onLogin} data-width="400" data-size="large" data-button-type="continue_with" data-show-faces="false" data-auto-logout-link="false" data-use-continue-as="true"></div>
+                <div class="Center fb-login-button" data-onlogin={props.onLogin} data-scope="public_profile,user_friends" data-width="400" data-size="large" data-button-type="continue_with" data-show-faces="false" data-auto-logout-link="false" data-use-continue-as="true"></div>
             </div>
         </div>
     );
@@ -49,6 +51,99 @@ function Navbar(props) {
             </div>
         </nav>
     );
+}
+
+
+function FriendList(props) {
+    let friends = props.friends;
+    let share = props.onClick;
+
+    return (
+        <Suggest 
+            items = {friends}
+            inputValueRenderer = {(friend) => friend.name}
+            itemPredicate = {(query, friend) => {
+                return friend.name.toLowerCase().indexOf(query.toLowerCase()) >= 0;
+            }}
+            //FIXME - confused by handle click ... cant figure out where that gets passed from
+            //so im just ignoring it
+            itemRenderer = {(friend, { handleClick, modifiers }) => {
+                if (!modifiers.matchesPredicate) {
+                    return null;
+                }
+                return (
+                    <MenuItem
+                        active={modifiers.active}
+                        key={friend.name}
+                        label={friend.name}
+                        onClick={() => share(friend)}
+                    />
+                );
+            }}
+            onItemSelect = {(friend) => share(friend)}
+        />
+    );
+}
+
+class ShareButton extends Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            isOpen: false,
+            friends: []
+        }
+
+        this.share = this.share.bind(this)
+    }
+
+    getFriends() {
+        const shareButton = this;
+        window.FB.api(
+            '/me',
+            'GET',
+            {"fields":"id,name,friends"},
+            function(response) {
+                shareButton.setState({
+                    friends: response.friends.data
+                })
+            }
+        );
+    }
+
+    share(friend) {
+        console.log("share with")
+        console.log(friend)
+        this.setState({isOpen:false});
+        return;
+    }
+
+    toggleDialog = () => this.setState({ isOpen: !this.state.isOpen });
+
+    render() {
+        return (
+            <div>
+                <Button onClick={() => {this.toggleDialog();this.getFriends();}} className="pt-icon-share pt-intent-primary" />
+                <Dialog
+                    icon="inbox"
+                    isOpen={this.state.isOpen}
+                    onClose={this.toggleDialog}
+                    title="Share With"
+                >
+                    <div className='pt-dialog-body'>
+                        <FriendList friends={this.state.friends} onClick={this.share} />
+                    </div>
+                    <div className="pt-dialog-footer">
+                        <div className="pt-dialog-footer-actions">
+                            <Button
+                                onClick={this.toggleDialog}
+                                text="Cancel"
+                            />
+                        </div>
+                    </div>
+                </Dialog>
+            </div>
+        );
+    }
 }
 
 class Form extends Component {
@@ -94,16 +189,14 @@ class Form extends Component {
     render() {
         let inputs;
         if (this.props.type === 'book') {
-            inputs = (
-            <div>
+            inputs = ([
                 <td>
                     <input placeholder="Title" class="pt-input" name="Title" type="text" value={this.state.Title} onChange={this.handleChange} />
-                </td>
+                </td>,
                 <td>
                     <input placeholder="Author" class="pt-input" name="Author" type="text" value={this.state.Author} onChange={this.handleChange} />
                 </td>
-            </div>
-            );
+            ]);
         } else if (this.props.type === 'article') {
             inputs = (
                 <td>
@@ -115,7 +208,12 @@ class Form extends Component {
         return (
             <tr>
                 {inputs}
-                <td><button class="pt-button pt-intent-success pt-icon-add" type="button" onClick={this.handleSubmit}/></td>
+                <td>
+                    <div class="pt-button-group">
+                        <a name="type" class="pt-button pt-intent-success pt-icon-add" onClick={this.handleSubmit} role="button" />
+                        <ShareButton />
+                    </div>
+                </td>
             </tr>
         );
     }
