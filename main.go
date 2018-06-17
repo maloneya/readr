@@ -1,62 +1,63 @@
 package main
 
 import (
-	"os"
-	"io/ioutil"
+	"database/sql"
+	"encoding/json"
 	"fmt"
-	"strings"
+	"io/ioutil"
 	"log"
 	"net/http"
-	"encoding/json"
-	"database/sql"
-	 _ "github.com/lib/pq"
+	"os"
+	"strings"
+
+	_ "github.com/lib/pq"
 )
 
 var db *sql.DB
 
-type Request struct {
-	Title, Author, Publication, URL, User_id string
+type request struct {
+	Title, Author, Publication, URL, UserID, ReqType, AddedBy string
 }
 
-type Book struct {
-	Title, Author, User_id string
+type book struct {
+	Title, Author, UserID, AddedBy string
 }
 
-type Article struct {
-	Title, Publication, URL, User_id string
+type article struct {
+	Title, Publication, URL, UserID, AddedBy string
 }
 
-type ReadingList struct {
-	Books []Book
-	Articles []Article
+type readingList struct {
+	Books    []book
+	Articles []article
 }
 
 func getLinkData(url string) (title, publication string) {
-	resp,err := http.Get(url)
+	resp, err := http.Get(url)
 	if err != nil {
 		log.Fatalf("get link failed %q", err)
 	}
 	var body []byte
-	body,err = ioutil.ReadAll(resp.Body)
+	body, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalf("Get link data: %q",err)
+		log.Fatalf("Get link data: %q", err)
 	}
 
-	raw_html := string(body)
-	title_html := raw_html[strings.Index(raw_html,"title"):]
-	title_and_pub := title_html[strings.Index(title_html,">") + 1:strings.Index(title_html,"</")]
-	data := strings.Split(title_and_pub,"-")
+	rawHTML := string(body)
+	titleHTML := rawHTML[strings.Index(rawHTML, "title"):]
+	titlePub := titleHTML[strings.Index(titleHTML, ">")+1 : strings.Index(titleHTML, "</")]
+	data := strings.Split(titlePub, "-")
 	title = data[0]
 
-	if (len(data) != 2) {
-		title = title_and_pub
+	if len(data) != 2 {
+		title = titlePub
 		publication = resp.Request.URL.Host
-		start := strings.Index(publication,".")
-		end := strings.LastIndex(publication,".")
+		start := strings.Index(publication, ".")
+		end := strings.LastIndex(publication, ".")
 		if start == end {
 			publication = publication[:start]
 		} else {
-			publication = publication[start+1:end]
+			publication = publication[start+1 : end]
 		}
 	} else {
 		publication = data[1]
@@ -66,13 +67,13 @@ func getLinkData(url string) (title, publication string) {
 }
 
 func getList(w http.ResponseWriter, r *http.Request) {
-	var list ReadingList = ReadingList{}
-	user := Request{}
-	parseRequest(r,&user)
+	var list = readingList{}
+	user := request{}
+	parseRequest(r, &user)
 
-	log.Printf(user.User_id)
-	getBooks(&list, user.User_id)
-	getArticles(&list, user.User_id)
+	log.Printf(user.UserID)
+	getBooks(&list, user.UserID)
+	getArticles(&list, user.UserID)
 
 	res, err := json.Marshal(list)
 	if err != nil {
@@ -81,52 +82,64 @@ func getList(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, string(res))
 }
 
-func getBooks(list *ReadingList, user_id string) {
-	rows, err := db.Query(BookGet, user_id)
+func getBooks(list *readingList, userID string) {
+	rows, err := db.Query(BookGet, userID)
 	if err != nil {
 		log.Fatalf("getBooks querry fail: %q", err)
 	}
 	defer rows.Close()
 
-	var title, author string
+	var title, author, addedBy string
 	for rows.Next() {
-		err := rows.Scan(&title,&author)
+		err := rows.Scan(&title, &author, &addedBy)
 		if err != nil {
 			log.Fatalf("Row scan error: %q", err)
 		}
-		list.Books = append(list.Books, Book{Title: title, Author: author})
+		list.Books = append(list.Books, book{Title: title, Author: author, AddedBy: addedBy})
 	}
 }
 
-func getArticles(list *ReadingList, user_id string) {
-	rows, err := db.Query(ArticleGet, user_id)
+func getArticles(list *readingList, userID string) {
+	rows, err := db.Query(ArticleGet, userID)
 	if err != nil {
 		log.Fatalf("getArticles querry fail: %q", err)
 	}
 	defer rows.Close()
 
-	var title, publication, url string
+	var title, publication, url, addedBy string
 	for rows.Next() {
-		err := rows.Scan(&title,&publication,&url)
+		err := rows.Scan(&title, &publication, &url, &addedBy)
 		if err != nil {
 			log.Fatalf("Row scan error: %q", err)
 		}
-		list.Articles = append(list.Articles, Article{Title: title, Publication: publication, URL: url})
+		list.Articles = append(list.Articles, article{Title: title, Publication: publication, URL: url, AddedBy: addedBy})
+	}
+}
+
+func acceptShare(w http.ResponseWriter, r *http.Request) {
+	req := request{}
+	parseRequest(r, &req)
+
+	switch req.ReqType {
+	case "book":
+		db.Exec(BookUpdate, req.UserID, req.Title, req.Author, req.UserID)
+	case "article":
+		db.Exec(ArticleUpdate, req.UserID, req.URL, req.UserID)
 	}
 }
 
 func addBook(w http.ResponseWriter, r *http.Request) {
-	book := Request{}
-	parseRequest(r,&book)
+	book := request{}
+	parseRequest(r, &book)
 
-	db.Exec(BookInsert, book.Title, book.Author, book.User_id)
+	db.Exec(BookInsert, book.Title, book.Author, book.UserID, book.AddedBy)
 }
 
 func remBook(w http.ResponseWriter, r *http.Request) {
-	book := Request{}
-	parseRequest(r,&book)
+	book := request{}
+	parseRequest(r, &book)
 
-	res, err := db.Exec(BookDelete,book.Title, book.Author, book.User_id)
+	res, err := db.Exec(BookDelete, book.Title, book.Author, book.UserID)
 	if err != nil {
 		log.Println(err)
 	}
@@ -134,13 +147,13 @@ func remBook(w http.ResponseWriter, r *http.Request) {
 }
 
 func addArticle(w http.ResponseWriter, r *http.Request) {
-	url := Request{}
-	parseRequest(r,&url)
+	url := request{}
+	parseRequest(r, &url)
 	title, publication := getLinkData(url.URL)
-	article := Article{title,publication,url.URL,url.User_id}
-	db.Exec(ArticleInsert, article.Title, article.Publication, article.URL, article.User_id)
+	newArticle := article{title, publication, url.URL, url.UserID, url.AddedBy}
+	db.Exec(ArticleInsert, newArticle.Title, newArticle.Publication, newArticle.URL, newArticle.UserID, newArticle.AddedBy)
 	//send article meta data back to client
-	res, err := json.Marshal(article)
+	res, err := json.Marshal(newArticle)
 	if err != nil {
 		log.Fatal("Data could not be Marshaled")
 	}
@@ -149,11 +162,11 @@ func addArticle(w http.ResponseWriter, r *http.Request) {
 }
 
 func remArticle(w http.ResponseWriter, r *http.Request) {
-	article := Request{}
-	parseRequest(r,&article)
+	article := request{}
+	parseRequest(r, &article)
 	log.Printf(article.URL)
-	log.Printf(article.User_id)
-	res, err := db.Exec(ArticleDelete, article.URL, article.User_id)
+	log.Printf(article.UserID)
+	res, err := db.Exec(ArticleDelete, article.URL, article.UserID)
 	if err != nil {
 		log.Println(err)
 	}
@@ -162,11 +175,11 @@ func remArticle(w http.ResponseWriter, r *http.Request) {
 
 func dbSetup() {
 	//FIXME enable ssl
-	db_url := os.Getenv("DATABASE_URL") + "?sslmode=disable";
-	log.Println(db_url)
+	dbURL := os.Getenv("DATABASE_URL") + "?sslmode=disable"
+	log.Println(dbURL)
 
 	var err error
-	db, err = sql.Open("postgres", db_url)
+	db, err = sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("Error opening database: %q", err)
 	}
@@ -182,15 +195,15 @@ func dbSetup() {
 	}
 }
 
-func parseRequest(r *http.Request, data *Request) {
+func parseRequest(r *http.Request, data *request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Println("parse reqeust failed")
+		log.Println("parse request failed")
 	}
 
 	err = json.Unmarshal(body, data)
 	if err != nil {
-		log.Println("json unmarshal fail parse request: %q", err)
+		log.Printf("json unmarshal fail parse request: %q", err)
 	}
 }
 
@@ -198,6 +211,8 @@ func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
+	} else {
+		http.Handle("/", http.FileServer(http.Dir("./build")))
 	}
 
 	dbSetup()
@@ -208,8 +223,6 @@ func main() {
 	http.HandleFunc("/api/remArticle", remArticle)
 	http.HandleFunc("/api/addArticle", addArticle)
 
-
-	http.Handle("/", http.FileServer(http.Dir("./build")))
 	log.Println("Server started on " + port)
-	log.Fatal(http.ListenAndServe(":" + port, nil))
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
