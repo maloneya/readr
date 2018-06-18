@@ -117,11 +117,11 @@ class ShareButton extends Component {
 			AddedBy: this.props.userID
 		};
 
-		if (this.props.type === 'book') {
+		if (this.props.item.ReqType === 'book') {
 			shareItem.Title = this.props.item.Title;
 			shareItem.Author = this.props.item.Author;
 			postData('/api/addBook', shareItem);
-		} else if (this.props.type === 'article') {
+		} else if (this.props.item.ReqType === 'article') {
 			shareItem.URL = this.props.item.URL;
 			postData('/api/addArticle', shareItem);
 		}
@@ -164,20 +164,22 @@ class Form extends Component {
 		this.state = {
 			Title: '',
 			Author: '',
-			URL: ''
+			URL: '',
+			ReqType: this.props.type //putting this here because we just pass the whole state object to share
 		};
 
 		this.handleChange = this.handleChange.bind(this);
 		this.handleSubmit = this.handleSubmit.bind(this);
 	}
-
+	
 	handleChange(event) {
 		const target = event.target;
 		const value = target.value;
 		const name = target.name;
 
 		this.setState({
-			[name]: value
+			[name]: value,
+			ReqType: this.props.type
 		});
 	}
 
@@ -219,12 +221,7 @@ class Form extends Component {
 					<tr>
 						{inputs}
 						<td>
-							<div className="pt-button-group">
-								<Button name="type" className="pt-button pt-intent-success pt-icon-add" onClick={this.handleSubmit} role="button" />
-								<UserContext.Consumer>
-									{(UserID) => (<ShareButton type={this.props.type} item={this.state} userID={UserID}/>)}
-								</UserContext.Consumer>
-							</div>
+							<Actions CompleteButton={this.handleSubmit} ShareButton={this.state} OpenButton='none'/>
 						</td>
 					</tr>
 				</tbody>
@@ -233,34 +230,43 @@ class Form extends Component {
 	}
 }
 
-class Book extends Component {
-	render() {
-		return (
-			<tr>
-				<td>{this.props.Title}</td>
-				<td>{this.props.author}</td>
-				<td><button type="button" className="pt-button pt-icon-tick" onClick={this.props.onClick}/></td>
-			</tr>
-		);
-	}
+function Actions(props) {
+	let share = (props.ShareButton !== 'none') ? 
+		<UserContext.Consumer>
+			{(UserID) => (<ShareButton item={props.ShareButton} userID={UserID}/>)}
+		</UserContext.Consumer> : '';
+
+	let complete = (props.CompleteButton !== 'none') ? <Button name="type" className="pt-button pt-icon-tick" onClick={props.CompleteButton} role="button" /> : '';
+
+	let open = (props.OpenButton !== 'none') ? 	<Button name="type" className="pt-button pt-icon-document-open" onClick={() => window.open(props.OpenButton)} role="button" /> : '';
+
+	return (
+		<div className='pt-button-group'>
+			{complete}
+			{open}
+			{share}
+		</div>
+	);
 }
 
-class Article extends Component {
-	render() {
-		return (
-			<tr>
-				<td>{this.props.Title}</td>
-				<td>{this.props.publication}</td>
-				<td>
-					<div className="pt-button-group">
-						<Button name="type" className="pt-button pt-icon-tick" onClick={this.props.onClick} role="button" />
-						<Button name="type" className="pt-button pt-icon-document-open" onClick={() => window.open(this.props.url)} role="button" />
-					</div>
-				</td>
-			</tr>
-		);
-	}
-}
+function ListItem(props) {
+	let data = [];
+	let i = 0;
+	const displayProperties = ['Title','Publication','Author','AddedBy'];
+	for (var property in props.item) 
+		if (props.item.hasOwnProperty(property) && displayProperties.indexOf(property) >= 0)
+			data.push(<td key={i++}>{props.item[property]}</td>);
+	
+	let open = (props.item.ReqType === 'article') ? props.item.URL : 'none';
+
+	return (
+		<tr>
+			{data}
+			<Actions ShareButton={props.item} CompleteButton={props.onClick} OpenButton={open}/> 
+		</tr>
+	);
+}	
+
 
 class ReadingList extends Component {
 	render() {
@@ -268,20 +274,22 @@ class ReadingList extends Component {
 		const books = [];
 		const articles = [];
 
-		this.props.books.forEach((book,i) => {
-			if ((book.Title + book.Author).toLowerCase().indexOf(filterText) === -1) {
+		this.props.books.forEach((book) => {
+			let key = book.Title + book.Author;
+			if ((key).toLowerCase().indexOf(filterText) === -1) {
 				return;
 			}
 			book.ReqType = 'book';
-			books.push(<Book Title={book.Title} author={book.Author} onClick={() => this.props.bookAction(book)}/>);
+			books.push(<ListItem key={key} item={book} onClick={() => this.props.bookAction(book)}/>);
 		});
 
-		this.props.articles.forEach((article,i) => {
-			if ((article.Title + article.Publication).toLowerCase().indexOf(filterText) === -1) {
+		this.props.articles.forEach((article) => {
+			let key = article.Title + article.Publication;
+			if ((key).toLowerCase().indexOf(filterText) === -1) {
 				return;
 			}
 			article.ReqType = 'article';
-			articles.push(<Article Title={article.Title} publication={article.Publication} url={article.URL} onClick={() => this.props.articleAction(article)} />);
+			articles.push(<ListItem key={key} item={article} onClick={() => this.props.articleAction(article)}/>);
 		});
 
 		return (
