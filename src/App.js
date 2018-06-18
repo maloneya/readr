@@ -94,6 +94,7 @@ class ShareButton extends Component {
 		};
 
 		this.share = this.share.bind(this);
+		this.toggleDialog = this.toggleDialog.bind(this);
 	}
 
 	getFriends() {
@@ -111,18 +112,18 @@ class ShareButton extends Component {
 	}
 
 	share(friend) {
-		let item = {
+		let shareItem = {
 			UserID: friend.id,
-			AddedBy: '123', //TODO myuserid
+			AddedBy: this.props.userID
 		};
 
 		if (this.props.type === 'book') {
-			item.Title = this.props.item.title;
-			item.Author = this.props.item.Author;
-			postData('/api/addBook', item);
+			shareItem.Title = this.props.item.Title;
+			shareItem.Author = this.props.item.Author;
+			postData('/api/addBook', shareItem);
 		} else if (this.props.type === 'article') {
-			item.URL = this.props.item.URL;
-			postData('/api/addArticle', item);
+			shareItem.URL = this.props.item.URL;
+			postData('/api/addArticle', shareItem);
 		}
 
 		this.setState({isOpen:false});
@@ -220,7 +221,9 @@ class Form extends Component {
 						<td>
 							<div className="pt-button-group">
 								<Button name="type" className="pt-button pt-intent-success pt-icon-add" onClick={this.handleSubmit} role="button" />
-								<ShareButton type={this.props.type} item={this.state}/>
+								<UserContext.Consumer>
+									{(UserID) => (<ShareButton type={this.props.type} item={this.state} userID={UserID}/>)}
+								</UserContext.Consumer>
 							</div>
 						</td>
 					</tr>
@@ -269,25 +272,29 @@ class ReadingList extends Component {
 			if ((book.Title + book.Author).toLowerCase().indexOf(filterText) === -1) {
 				return;
 			}
-			books.push(<Book Title={book.Title} author={book.Author} onClick={() => this.props.bookListRemove(i)}/>);
+			book.ReqType = 'book';
+			books.push(<Book Title={book.Title} author={book.Author} onClick={() => this.props.bookAction(book)}/>);
 		});
 
 		this.props.articles.forEach((article,i) => {
 			if ((article.Title + article.Publication).toLowerCase().indexOf(filterText) === -1) {
 				return;
 			}
-			articles.push(<Article Title={article.Title} publication={article.Publication} url={article.URL} onClick={() => this.props.articleRemove(i)} />);
+			article.ReqType = 'article';
+			articles.push(<Article Title={article.Title} publication={article.Publication} url={article.URL} onClick={() => this.props.articleAction(article)} />);
 		});
 
 		return (
-			<table className='pt-html-table pt-html-table-striped'>
+			<table className='pt-html-table'>
 				<thead>
 					<tr>
 						<th>Title</th><th>Author/Publication</th>
 					</tr>
 				</thead>
-				{books}
-				{articles}
+				<tbody>
+					{books}
+					{articles}
+				</tbody>
 			</table>
 		);
 	}
@@ -304,6 +311,7 @@ class Readr extends Component {
 		};
 
 		this.handleFilterTextChange = this.handleFilterTextChange.bind(this);
+		this.acceptShare = this.acceptShare.bind(this);
 	}
 
 	handleFilterTextChange(filterText) {
@@ -320,6 +328,7 @@ class Readr extends Component {
 		});
 
 		book.UserID = this.props.userID;
+		book.AddedBy = this.props.userID;
 		postData('/api/addBook',book);
 	}
 
@@ -327,7 +336,8 @@ class Readr extends Component {
 		let Articles = this.state.Articles.slice();
 		let article = {
 			URL: url,
-			UserID: this.props.userID
+			UserID: this.props.userID,
+			AddedBy: this.props.userID
 		};
 
 		postData('/api/addArticle',article)
@@ -343,9 +353,9 @@ class Readr extends Component {
 			});
 	}
 
-	bookListRemove(list_index) {
+	bookListRemove(item) {
 		let Books = this.state.Books.slice();
-		let remed_book = Books.splice(list_index,1);
+		let remed_book = Books.splice(item.id,1);
 		this.setState({
 			Books: Books
 		});
@@ -354,15 +364,29 @@ class Readr extends Component {
 		postData('/api/remBook',remed_book[0]);
 	}
 
-	articleRemove(list_index) {
+	articleRemove(item) {
 		let Articles = this.state.Articles.slice();
-		let remed_article= Articles.splice(list_index,1);
+		let remed_article= Articles.splice(item.id,1);
 		this.setState({
 			Articles: Articles
 		});
 
 		remed_article[0].UserID = this.props.userID;
 		postData('/api/remArticle', remed_article[0]);
+	}
+
+	acceptShare(item) {
+		item.UserID = this.props.userID;
+		postData('/api/acceptShare', item);
+		if (item.ReqType === 'book') {
+			let items = this.state.Books.slice();
+			items[item.id].AddedBy = this.props.userID;
+			this.setState({Books: items});
+		} else {
+			let items = this.state.Articles.slice();
+			items[item.id].AddedBy = this.props.userID;
+			this.setState({Articles: items});
+		}
 	}
 
 	componentDidMount() {
@@ -383,19 +407,37 @@ class Readr extends Component {
 		const { Books, Articles, newData } = this.state;
 		let myBooks = [], myArticles = [], sharedBooks = [], sharedArticles = [];
 
-		Books.forEach((book) => {
-			if (book.AddedBy === '123') //todo myuser id
+		Books.forEach((book,i) => {
+			book.id = i;
+			if (book.AddedBy === this.props.userID)
 				myBooks.push(book);
 			else
 				sharedBooks.push(book);
 		});
-		Articles.forEach((article) => {
-			if (article.AddedBy === '123') //todo myuser id
+		Articles.forEach((article,i) => {
+			article.id = i;
+			if (article.AddedBy === this.props.userID)
 				myArticles.push(article);
 			else
 				sharedArticles.push(article);
 		});
 
+		var shareCard; 
+		if (sharedArticles.length + sharedBooks.length > 0) {
+			shareCard = (
+				<div className="pt-card">
+					<div className="pt-callout .modifier">
+						<h5 className="pt-callout-title">Shared With Me</h5>
+					</div>
+					<ReadingList 
+						filterText={this.state.filterText} 
+						books={sharedBooks}
+						articles={sharedArticles}
+						bookAction={this.acceptShare.bind(this)}
+						articleAction={this.acceptShare.bind(this)}/>
+				</div>
+			);
+		}
 
 		var itemForm;
 		if (newData === 'book')
@@ -407,17 +449,17 @@ class Readr extends Component {
 			<div className='Body'>
 				<Navbar filterText={this.state.filterText} onFilterTextChange={this.handleFilterTextChange}/>
 				<div className="pt-card">
-					<ReadingList filterText={this.state.filterText} books={myBooks}
+					<div className="pt-callout .modifier">
+						<h5 className="pt-callout-title">My List</h5>
+					</div>
+					<ReadingList 
+						filterText={this.state.filterText}
+						books={myBooks}
 						articles={myArticles}
-						bookListRemove={this.bookListRemove.bind(this)}
-						articleRemove={this.articleRemove.bind(this)}/>
+						bookAction={this.bookListRemove.bind(this)}
+						articleAction={this.articleRemove.bind(this)}/>
 				</div>
-				<div className="pt-card">
-					<ReadingList filterText={this.state.filterText} books={sharedBooks}
-						articles={sharedArticles}
-						bookListRemove={this.bookListRemove.bind(this)}
-						articleRemove={this.articleRemove.bind(this)}/>
-				</div>
+				{shareCard}
 				<div className="pt-card">
 					<div className="pt-button-group">
 						<Button name="type" className="pt-button pt-icon-document" role="button" onClick={() => this.setState({newData:'article'})} />
@@ -486,7 +528,11 @@ class App extends Component {
 		if (userID === '') {
 			return <Login onLogin={this.checkLoginState.bind(this)} />;
 		} else {
-			return <Readr userID={userID} />;
+			return (
+				<UserContext.Provider value={userID}>
+					<Readr userID={userID} />
+				</UserContext.Provider>
+			);
 		}
 	}
 }
@@ -501,4 +547,5 @@ function postData(url, data) {
 	});
 }
 
+export const UserContext = React.createContext('');
 export default App;

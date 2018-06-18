@@ -222,6 +222,7 @@ func main() {
 	http.HandleFunc("/api/remBook", remBook)
 	http.HandleFunc("/api/remArticle", remArticle)
 	http.HandleFunc("/api/addArticle", addArticle)
+	http.HandleFunc("/api/acceptShare", acceptShare)
 
 	log.Println("Server started on " + port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
