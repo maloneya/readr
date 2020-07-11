@@ -6,7 +6,7 @@ import './index.css';
 function Login(props) {
 	return (
 		<div className="Body">
-			<div className="pt-card pt-elevation-3">
+			<div className="bp3-card bp3-elevation-3">
 				<img src="/assets/logo.png" className="Center" alt="Readr logo"/>
 				<div className="Center fb-login-button" data-onlogin={() => props.onLogin} data-scope="public_profile,user_friends" data-width="400" data-size="large" data-button-type="continue_with" data-show-faces="false" data-auto-logout-link="false" data-use-continue-as="true"></div>
 			</div>
@@ -26,7 +26,7 @@ class SearchBar extends Component {
 
 	render() {
 		return (
-			<input className="pt-input" placeholder="Search My List..." type="text"
+			<input className="bp3-input" placeholder="Search My List..." type="text"
 				value={this.props.filterText}
 				onChange={this.handleFilterTextChange}
 			/>
@@ -36,18 +36,18 @@ class SearchBar extends Component {
 
 function Navbar(props) {
 	return (
-		<nav className="pt-navbar">
-			<div className="pt-navbar-group pt-align-left">
-				<div className="pt-navbar-heading">Readr</div>
+		<nav className="bp3-navbar">
+			<div className="bp3-navbar-group bp3-align-left">
+				<div className="bp3-navbar-heading">Readr</div>
 				<SearchBar filterText={props.filterText} onFilterTextChange={props.onFilterTextChange}/>
 			</div>
-			<div className="pt-navbar-group pt-align-right">
-				<button className="pt-button pt-minimal pt-icon-home">Home</button>
-				<button className="pt-button pt-minimal pt-icon-document">List</button>
-				<span className="pt-navbar-divider"></span>
-				<button className="pt-button pt-minimal pt-icon-user"></button>
-				<button className="pt-button pt-minimal pt-icon-notifications"></button>
-				<button className="pt-button pt-minimal pt-icon-cog"></button>
+			<div className="bp3-navbar-group bp3-align-right">
+				<button className="bp3-button bp3-minimal bp3-icon-home">Home</button>
+				<button className="bp3-button bp3-minimal bp3-icon-document">List</button>
+				<span className="bp3-navbar-divider"></span>
+				<button className="bp3-button bp3-minimal bp3-icon-user"></button>
+				<button className="bp3-button bp3-minimal bp3-icon-notifications"></button>
+				<button className="bp3-button bp3-minimal bp3-icon-cog"></button>
 			</div>
 		</nav>
 	);
@@ -99,16 +99,16 @@ class ShareButton extends Component {
 
 	getFriends() {
 		const shareButton = this;
-		window.FB.api(
-			'/me',
-			'GET',
-			{'fields':'id,name,friends'},
-			function(response) {
-				shareButton.setState({
-					friends: response.friends.data
-				});
-			}
-		);
+		// window.FB.api(
+		// 	'/me',
+		// 	'GET',
+		// 	{'fields':'id,name,friends'},
+		// 	function(response) {
+		// 		shareButton.setState({
+		// 			friends: response.friends.data
+		// 		});
+		// 	}
+		// );
 	}
 
 	share(friend) {
@@ -134,18 +134,18 @@ class ShareButton extends Component {
 	render() {
 		return (
 			<div>
-				<Button onClick={() => {this.toggleDialog();this.getFriends();}} className="pt-icon-share pt-intent-primary" />
+				<Button onClick={() => {this.toggleDialog();this.getFriends();}} className="bp3-icon-share bp3-intent-primary" />
 				<Dialog
 					icon="inbox"
 					isOpen={this.state.isOpen}
 					onClose={this.toggleDialog}
 					title="Share With"
 				>
-					<div className='pt-dialog-body'>
+					<div className='bp3-dialog-body'>
 						<FriendList friends={this.state.friends} onClick={this.share} />
 					</div>
-					<div className="pt-dialog-footer">
-						<div className="pt-dialog-footer-actions">
+					<div className="bp3-dialog-footer">
+						<div className="bp3-dialog-footer-actions">
 							<Button
 								onClick={this.toggleDialog}
 								text="Cancel"
@@ -204,14 +204,14 @@ class Form extends Component {
 		let inputs = (this.props.type === 'book') ? 
 			(<React.Fragment>
 				<td>
-					<input placeholder="Title" className="pt-input" name="Title" type="text" value={this.state.Title} onChange={this.handleChange} />
+					<input placeholder="Title" className="bp3-input" name="Title" type="text" value={this.state.Title} onChange={this.handleChange} />
 				</td>
 				<td>
-					<input placeholder="Author" className="pt-input" name="Author" type="text" value={this.state.Author} onChange={this.handleChange} />
+					<input placeholder="Author" className="bp3-input" name="Author" type="text" value={this.state.Author} onChange={this.handleChange} />
 				</td>
 			</React.Fragment>):(
 				<td>
-					<input placeholder="URL" className="pt-input" name="URL" type="text" value={this.state.URL} onChange={this.handleChange} />
+					<input placeholder="URL" className="bp3-input" name="URL" type="text" value={this.state.URL} onChange={this.handleChange} />
 				</td>
 			);
 		
@@ -236,12 +236,12 @@ function Actions(props) {
 			{(UserID) => (<ShareButton item={props.ShareButton} userID={UserID}/>)}
 		</UserContext.Consumer> : '';
 
-	let complete = (props.CompleteButton !== 'none') ? <Button name="type" className="pt-button pt-icon-tick" onClick={props.CompleteButton} role="button" /> : '';
+	let complete = (props.CompleteButton !== 'none') ? <Button name="type" className="bp3-button bp3-icon-tick" onClick={props.CompleteButton} role="button" /> : '';
 
-	let open = (props.OpenButton !== 'none') ? 	<Button name="type" className="pt-button pt-icon-document-open" onClick={() => window.open(props.OpenButton)} role="button" /> : '';
+	let open = (props.OpenButton !== 'none') ? 	<Button name="type" className="bp3-button bp3-icon-document-open" onClick={() => window.open(props.OpenButton)} role="button" /> : '';
 
 	return (
-		<div className='pt-button-group'>
+		<div className='bp3-button-group'>
 			{complete}
 			{open}
 			{share}
@@ -293,7 +293,7 @@ class ReadingList extends Component {
 		});
 
 		return (
-			<table className='pt-html-table'>
+			<table className='bp3-html-table'>
 				<thead>
 					<tr>
 						<th>Title</th><th>Author/Publication</th>
@@ -398,17 +398,17 @@ class Readr extends Component {
 	}
 
 	componentDidMount() {
-		postData('/api/getList',{UserID: this.props.userID})
-			.then(res => res.json())
-			.then((result) => {
-				this.setState({
-					Books: (result.Books !== null) ? result.Books:[],
-					Articles: (result.Articles !== null) ? result.Articles:[]
-				});
-			})
-			.catch((error) => {
-				console.log(error);
-			});
+		// postData('/api/getList',{UserID: this.props.userID})
+		// 	.then(res => res.json())
+		// 	.then((result) => {
+		// 		this.setState({
+		// 			Books: (result.Books !== null) ? result.Books:[],
+		// 			Articles: (result.Articles !== null) ? result.Articles:[]
+		// 		});
+		// 	})
+		// 	.catch((error) => {
+		// 		console.log(error);
+		// 	});
 	}
 
 	render() {
@@ -433,9 +433,9 @@ class Readr extends Component {
 		var shareCard; 
 		if (sharedArticles.length + sharedBooks.length > 0) {
 			shareCard = (
-				<div className="pt-card">
-					<div className="pt-callout .modifier">
-						<h5 className="pt-callout-title">Shared With Me</h5>
+				<div className="bp3-card">
+					<div className="bp3-callout .modifier">
+						<h5 className="bp3-callout-title">Shared With Me</h5>
 					</div>
 					<ReadingList 
 						filterText={this.state.filterText} 
@@ -456,9 +456,9 @@ class Readr extends Component {
 		return (
 			<div className='Body'>
 				<Navbar filterText={this.state.filterText} onFilterTextChange={this.handleFilterTextChange}/>
-				<div className="pt-card">
-					<div className="pt-callout .modifier">
-						<h5 className="pt-callout-title">My List</h5>
+				<div className="bp3-card">
+					<div className="bp3-callout .modifier">
+						<h5 className="bp3-callout-title">My List</h5>
 					</div>
 					<ReadingList 
 						filterText={this.state.filterText}
@@ -468,10 +468,10 @@ class Readr extends Component {
 						articleAction={this.articleRemove.bind(this)}/>
 				</div>
 				{shareCard}
-				<div className="pt-card">
-					<div className="pt-button-group">
-						<Button name="type" className="pt-button pt-icon-document" role="button" onClick={() => this.setState({newData:'article'})} />
-						<Button name="type" className="pt-button pt-icon-git-repo" role="button" onClick={() => this.setState({newData:'book'})}/>
+				<div className="bp3-card">
+					<div className="bp3-button-group">
+						<Button name="type" className="bp3-button bp3-icon-document" role="button" onClick={() => this.setState({newData:'article'})} />
+						<Button name="type" className="bp3-button bp3-icon-git-repo" role="button" onClick={() => this.setState({newData:'book'})}/>
 					</div>
 					{itemForm}
 				</div>
@@ -491,7 +491,8 @@ class App extends Component {
 	}
 
 	statusChangeCallback(login_response) {
-		const user_id = login_response.authResponse.userID;
+		//const user_id = login_response.authResponse.userID;
+		const user_id = 0;
 		if (login_response.status === 'connected') {
 			this.setState({
 				userID: user_id,
@@ -531,7 +532,8 @@ class App extends Component {
 	}
 
 	render() {
-		const userID = this.state.userID;
+		//const userID = this.state.userID;
+		const userID = 0;
 
 		if (userID === '') {
 			return <Login onLogin={this.checkLoginState.bind(this)} />;
